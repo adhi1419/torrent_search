@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" style="height: 100%; min-height: 100%;">
+<head>
+	<meta charset="utf-8">
+	<title>Results for {{query}}</title>
+
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css" integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ" crossorigin="anonymous">
+	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4-4.1.1/jq-3.3.1/dt-1.10.20/datatables.min.css"/>
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+	<script type="text/javascript" src="https://cdn.datatables.net/v/bs4-4.1.1/jq-3.3.1/dt-1.10.20/datatables.min.js"></script>
+	<script>
+		var __multiplier_prefix = {0: '', 10: 'K', 20: 'M', 30: 'G', 40: 'T'}
+		function hr_size(size) {
+			mul = Math.min(Math.floor(Math.log2(size)/10) * 10, 40)
+			return (size / (2 ** mul)).toFixed(2) + ' ' + __multiplier_prefix[mul] + 'B'
+		}
+
+		$.fn.dataTable.ext.search.push(
+		    function(settings, data, dataIndex) {
+		        var max = parseInt( $('#max_age').val(), 10);
+		        var age = parseFloat(data[1]) || 0;
+
+		        if (isNaN(max) || age <= max)
+		            return true;
+
+		        return false;
+		    }
+		);
+
+		$.fn.dataTable.ext.search.push(
+		    function(settings, data, dataIndex) {
+		        var min = parseInt( $('#min_seeds').val(), 10);
+		        var seeds = parseFloat(data[6]) || 0;
+
+		        if (isNaN(min) || seeds >= min)
+		            return true;
+
+		        return false;
+		    }
+		);
+
+		$.fn.dataTable.ext.search.push(
+		    function(settings, data, dataIndex) {
+		    	var min = parseFloat( $('#min_size').val(), 10) * (2 ** $('#min_size_mul').val());
+		        var max = parseFloat( $('#max_size').val(), 10) * (2 ** $('#max_size_mul').val());
+		        var size = parseInt(data[4]) || 0;
+
+		        if ( (isNaN(min) && isNaN(max)) || (isNaN(min) && size <= max) ||
+             			(min <= size && isNaN(max)) || (min <= size && size <= max) )
+		            return true;
+
+		        return false;
+		    }
+		);
+
+		$(document).ready(function() {
+			var search_results = []
+			var results_table = $('#results').DataTable({
+				dom: 't  <"row view-pager"  <"col-md-4 d-flex align-items-center"  l>  <"col-md-4 d-flex justify-content-center align-items-center" p>  <"col-md-4 d-flex justify-content-end align-items-center"  i>  >',
+				columns: [
+					{% for label in field_labels %}
+					{ title: "{{label}}" },
+					{% endfor %}
+				],
+				columnDefs: [
+					{
+						targets: 1,
+						render: function (data, type, row, meta) {
+							if (type === 'display')
+								data = data + ' days';
+							return data;
+						}
+					},
+					{
+						targets: 4,
+						render: function (data, type, row, meta) {
+							if (type === 'display')
+								data = hr_size(data);
+							return data;
+						}
+					}
+				],
+				data: search_results,
+				pageLength: 25
+			});
+
+			function on_filter_field_change() {
+	    		results_table.column(3).search($('#search_title').val())
+	        	results_table.draw();
+			}
+
+		    $('#max_age, #search_title, #min_size, #max_size, #min_seeds').keyup(on_filter_field_change);
+
+		    $('#min_size_mul, #max_size_mul').change(on_filter_field_change)
+
+			$.ajax({
+				url: "{% url 'search:fetch_results' %}",
+				method: 'GET',
+				data: {{request}},
+				success: function(response) {
+					search_results = response.results;
+
+					$('#loading').remove();
+					$('#content').removeClass("d-none");
+					$('#content').removeClass("d-md-none");
+
+					$('#results_length > label').addClass("mb-0");
+					$('#results_info').addClass("pt-0")
+
+					results_table.clear();
+					results_table.rows.add(search_results);
+					results_table.columns.adjust().draw();
+				}
+			});
+		});
+	</script>
+</head>
+
+<body style="height: 100%; min-height: 100%;">
+	<div class="container d-flex h-100 align-items-center justify-content-center" id="loading">
+		<div class="spinner-grow text-primary" role="status">
+			<span class="sr-only">Loading...</span>
+		</div>
+		<div class="spinner-grow text-secondary" role="status">
+			<span class="sr-only">Loading...</span>
+		</div>
+		<div class="spinner-grow text-success" role="status">
+			<span class="sr-only">Loading...</span>
+		</div>
+		<div class="spinner-grow text-danger" role="status">
+			<span class="sr-only">Loading...</span>
+		</div>
+		<div class="spinner-grow text-warning" role="status">
+			<span class="sr-only">Loading...</span>
+		</div>
+		<div class="spinner-grow text-info" role="status">
+			<span class="sr-only">Loading...</span>
+		</div>
+		<div class="spinner-grow text-dark" role="status">
+			<span class="sr-only">Loading...</span>
+		</div>
+	</div>
+
+	<div class="container-fluid d-flex justify-content-center mt-3 mb-3 d-none d-md-none" id="content">
+		<div class="container col-md-12">
+			<div class="form-inline">
+				<div class="col-md-2">
+					<label class="sr-only" for="max_age">Max. Age (days)</label>
+		 			<input type="text" class="form-control" id="max_age"  placeholder="Max. Age (days)">
+		 		</div>
+
+		 		<div class="col-md-2">
+		 			<label class="sr-only" for="search_title">Refine Search</label>
+		 			<input type="text" class="form-control" id="search_title"  placeholder="Refine Search">
+		 		</div>
+
+	 			<div class="col-md-2">
+		 			<label class="sr-only" for="min_size">Min. Size</label>
+		 			<input type="text" class="form-control" id="min_size"  placeholder="Min. Size">
+		 		</div>
+
+				<div class="col-md-1">
+		 			<select class="selectpicker form-control" id="min_size_mul" data-live-search="true">
+						<option value="10">KB</option>
+						<option value="20" selected>MB</option>
+						<option value="30">GB</option>
+						<option value="40">TB</option>
+					</select>
+				</div>
+
+	 			<div class="col-md-2">
+		 			<label class="sr-only" for="max_size">Max. Size</label>
+		 			<input type="text" class="form-control" id="max_size"  placeholder="Max. Size">
+		 		</div>
+
+	 			<div class="col-md-1">
+		 			<select class="selectpicker form-control" id="max_size_mul" data-live-search="true">
+						<option value="10">KB</option>
+						<option value="20" selected>MB</option>
+						<option value="30">GB</option>
+						<option value="40">TB</option>
+					</select>
+				</div>
+
+	 			<div class="col-md-2">
+		 			<label class="sr-only" for="min_seeds">Min. Seeds</label>
+		 			<input type="text" class="form-control" id="min_seeds"  placeholder="Min. Seeds">
+		 		</div>
+			</div>
+			<table class="table table-hover w-100" id="results">
+				<thead thead-dark></thead>
+				<tbody>
+					{% for r in results %}
+					<tr>
+						<td>{{r.id}}</td>
+						<td>{{r.age.days}} days</td>
+						<td>{{r.tracker_info.title}}</td>
+						<td>{{r.name}}</td>
+						<td>{{r.size}}</td>
+						<td>{{r.category_info.name}}</td>
+						<td>{{r.seeds}}</td>
+						<td>{{r.leechers}}</td>
+						<td><a href="{{r.magnet}}">Magnet</a></td>
+					</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</body>
+</html>

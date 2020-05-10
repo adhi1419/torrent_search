@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" style="height: 100%; min-height: 100%;">
+<head>
+	<meta charset="utf-8">
+	<title>Jackett Search Engine</title>
+
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/css/bootstrap-select.css" />
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css" integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ" crossorigin="anonymous">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.bundle.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/js/bootstrap-select.min.js"></script>
+
+	<script>
+	$(document).ready(function() {
+		$("#refresh").click(function (event) {
+			$.ajax({
+				url: "{% url 'search:refresh' %}",
+				method : 'POST'
+			}); 
+		});
+	});
+</script>
+</head>
+
+<body style="height: 100%; min-height: 100%;">
+	<div class="container d-flex align-items-center justify-content-center h-100">
+		<div class="w-100">
+			<h1 class="text-center pb-3"> Torrent Search </h1>
+			<form class="pt-3" action="{% url 'search:results' %}" method="get">
+				<div class="form-group">
+					<label for="query">Query</label>
+					<input class="form-control form-control-lg" type="text" id="query" name="q">
+
+					<div class="form-row pt-3">
+						<div class="form-group col-md-4">
+							<div class="input-group w-100">
+								<div class="input-group-prepend">
+									<label class="input-group-text" for="tracker">Tracker</label>
+								</div>
+								<select class="selectpicker form-control" id="tracker" name="tracker" data-live-search="true">
+									<option value="all" selected>All</option>
+									{% for tracker in trackers %}
+									<option value={{tracker.tracker_id}}>{{tracker.title}}</option>
+									{% endfor %}
+								</select>
+							</div>
+						</div>
+						<div class="form-group col-md-4">
+							<div class="input-group w-100">
+								<div class="input-group-prepend">
+									<label class="input-group-text" for="cat">Category</label>
+								</div>
+
+								<select class="selectpicker form-control" id="cat" name="cat" multiple data-live-search="true" data-actions-box="true">
+									<option value="all" selected>All</option>
+									{% for cat in cats %}
+									<option value={{cat.category_id}}>{{cat.name}}</option>
+									{% endfor %}
+								</select>
+							</div>
+						</div>
+						<div class="form-group col-md-2">
+							<div class="input-group w-100">
+								<div class="input-group-prepend">
+									<label class="input-group-text" for="limit">Limit</label>
+								</div>
+
+								<input class="form-control" type="number" id="limit" name="limit" value="100" min="0" max="1000" step="10"/>
+							</div>
+						</div>
+						<div class="form-check col-md-2 d-flex align-items-center justify-content-center pb-2">
+							<div class="checkbox">
+								<label><input class="mr-2" type="checkbox" id="cached" name="cached">Show Cached Results</label>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="w-100 text-center">
+					<button type="submit" class="btn btn-primary"><span class="fas fa-search"></span>Search</button>
+					<a href="#" class="btn btn-info" id="refresh"><span class="fas fa-sync"></span>Refresh Trackers</a>
+				</div>
+			</form>
+		</div>
+	</div>
+</body>
+</html>
